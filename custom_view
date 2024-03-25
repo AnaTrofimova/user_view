@@ -1,0 +1,142 @@
+CustomView.kt:
+
+import android.content.Context
+import android.graphics.*
+import android.util.AttributeSet
+import android.view.MotionEvent
+import android.view.View
+import kotlin.random.Random
+
+class CustomView(context: Context, attrs: AttributeSet) : View(context, attrs) {
+
+    private var path = Path()
+    private var paint = Paint().apply {
+        isAntiAlias = true
+        color = Color.BLACK
+        style = Paint.Style.STROKE
+        strokeWidth = 5f
+    }
+
+    private val shapes = mutableListOf<Shape>()
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        for (shape in shapes) {
+            shape.draw(canvas)
+        }
+        canvas.drawPath(path, paint)
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val x = event.x
+        val y = event.y
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                path.moveTo(x, y)
+                invalidate()
+            }
+            MotionEvent.ACTION_MOVE -> {
+                path.lineTo(x, y)
+                invalidate()
+            }
+            MotionEvent.ACTION_UP -> {
+                shapes.add(Rectangle(x, y, RandomColor.randomColor()))
+                path.reset()
+                invalidate()
+            }
+        }
+        return true
+    }
+
+    fun clearCanvas() {
+        shapes.clear()
+        invalidate()
+    }
+
+    fun undo() {
+        if (shapes.isNotEmpty()) {
+            shapes.removeAt(shapes.size - 1)
+            invalidate()
+        }
+    }
+
+    private object RandomColor {
+        private val random = Random
+
+        fun randomColor(): Int {
+            return Color.rgb(random.nextInt(256), random.nextInt(256), random.nextInt(256))
+        }
+    }
+
+    interface Shape {
+        fun draw(canvas: Canvas)
+    }
+
+    data class Rectangle(val x: Float, val y: Float, val color: Int) : Shape {
+        override fun draw(canvas: Canvas) {
+            val paint = Paint().apply {
+                isAntiAlias = true
+                this.color = color
+            }
+            canvas.drawRect(x, y, x + 200, y + 200, paint)
+        }
+    }
+}
+
+activity_main.xml:
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.example.yourpackage.CustomView
+        android:id="@+id/customView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <Button
+        android:id="@+id/clearButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Clear"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="16dp" />
+
+    <Button
+        android:id="@+id/undoButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Undo"
+        android:layout_below="@id/clearButton"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="16dp" />
+
+</RelativeLayout>
+
+  MainActivity.kt:
+
+import android.os.Bundle
+import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
+
+class MainActivity : AppCompatActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val customView = findViewById<CustomView>(R.id.customView)
+        val clearButton = findViewById<Button>(R.id.clearButton)
+        val undoButton = findViewById<Button>(R.id.undoButton)
+
+        clearButton.setOnClickListener {
+            customView.clearCanvas()
+        }
+
+        undoButton.setOnClickListener {
+            customView.undo()
+        }
+    }
+}
